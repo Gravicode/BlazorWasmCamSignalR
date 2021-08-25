@@ -1,0 +1,36 @@
+﻿@page "/Webcam"
+@using static BlazorSignalR.Client.Shared.Usercontrols.CamCapture
+<h3>WebCam</h3>
+
+
+<BlazorSignalR.Client.Shared.Usercontrols.CamCapture @ref="cam"></BlazorSignalR.Client.Shared.Usercontrols.CamCapture>
+
+<div class="alert alert-info">
+<h4>Hasil Resize</h4>
+	<img src="@Pic" alt="no image"/>
+</div>
+@code {
+	string Pic;
+	BlazorSignalR.Client.Shared.Usercontrols.CamCapture cam;
+	protected override async Task OnInitializedAsync()
+	{
+		
+	}
+	protected override void OnInitialized()
+    {
+       
+    }
+	 protected override void OnAfterRender(bool firstRender)
+    {
+        
+       if (firstRender && cam != null)
+		{
+			cam.ImageCaptured+= (object sender, ImageCapturedEventArgs e) =>
+							{
+								Pic = e.ImageBase64;
+								StateHasChanged();
+							};
+		}
+       
+    }
+}

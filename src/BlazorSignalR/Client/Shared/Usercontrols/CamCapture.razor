@@ -1,0 +1,105 @@
+﻿@inject IJSRuntime JSRuntime
+@using System.IO
+@using BlazorSignalR.Client.Helpers
+
+
+<div class="row">
+<div class="col-6">
+    <canvas id="@options.CanvasID" 
+                style="background-color:lightgray;"
+                width="@options.Width"
+                height="@HeightPic">
+    </canvas>    
+</div>    
+<div class="col-6">
+    <img id="@ImageId" />    
+</div>
+</div>
+<div>
+    <button class="btn btn-success mt-1" @onclick="Start">Mulai Camera</button>
+    <button class="btn btn-info mt-1" @onclick="Capture">Ambil Foto</button>
+</div>
+<div style="display:none;">
+    <video id="@options.VideoID"
+           style="background-color:lightblue; visibility:hidden;"
+           width="@options.Width">Video stream tidak tersedia.
+    </video>
+
+</div>
+@code {
+    public event ImageCapturedEventHandler ImageCaptured;
+    
+    public delegate void ImageCapturedEventHandler(object sender, ImageCapturedEventArgs e);
+    public class ImageCapturedEventArgs : EventArgs
+    {
+        public string ImageBase64 { get; set; }
+    }
+
+    const int HeightPic = 640;
+    const int WidthPic = 480;
+
+    string ImageId = "imgcam1";  
+    bool IsCamStarting = false;
+    WebCamOptions options = new WebCamOptions() 
+        { 
+            CanvasID = "canvas1",
+             VideoID = "video1"
+        };
+    protected override void OnInitialized()
+    {
+        options.Filter = 
+            "contrast(1.4)";
+        options.Width = WidthPic;
+    }
+    public async Task Start()
+    {
+        await JSRuntime.InvokeVoidAsync("WebCamFunctions.start", options);
+        IsCamStarting = true;
+    }
+    public async Task<string> Capture()
+    {
+        if(!IsCamStarting){
+            Console.WriteLine("start cam first");
+            //toastService.ShowInfo("start camera dulu.");
+            return null;
+        }
+        var img64 = await JSRuntime.InvokeAsync<string>("CaptureCanvas", options.CanvasID, ImageId);
+        var img64Resized = await JSRuntime.InvokeAsync<string>("ResizeCanvas", ImageId, 320, 240);
+        byte[] datas = System.Convert.FromBase64String(img64Resized);
+        if (datas != null)
+        {
+            //SkiaSharpImageManipulationProvider resizer = new SkiaSharpImageManipulationProvider();
+            //var resized = resizer.Resize(datas, 160, 120);
+            var dataStr = $"data:image/png;base64, {img64Resized}";
+            ImageCaptured?.Invoke(this, new ImageCapturedEventArgs() { ImageBase64 = dataStr });
+            return dataStr;
+            //Image image = Image.FromStream(ms);
+            //Convert to Bitmap
+            //Bitmap bitmapImage = (Bitmap)image;
+            /*
+            var ms = new MemoryStream(datas);
+           
+            
+            //end of detection
+            var bytes = ImageHelper.FixedSize(ms, WidthPic, HeightPic, false);
+            string newName = $"absensi_{DateTime.Now.ToString("dd_MM_yyyy")}_{gen.RandomNumber(5)}.png";
+            //var bytes = ms.ToArray();
+            ms.Dispose();
+            await blob.UploadFile(newName, bytes);
+            var FileUrl = $"https://storagemurahaje.blob.core.windows.net/ngaji-online/{newName}";
+            var faceCount = result.faces.Count();
+            absenService.Update(new Absensi() { Nama = Username, Tanggal = Tanggal, RefId = AcaraId, PhotoUrl=FileUrl, JumlahOrang = faceCount<1?1:faceCount });
+            */
+        }
+        return null;
+    }
+    
+    
+    public class WebCamOptions
+    {
+        public int Width { get; set; } = 320;
+        public string VideoID { get; set; }
+        public string CanvasID { get; set; }
+        public string Filter { get; set; } = null;
+    }
+}
